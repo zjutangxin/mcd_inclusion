@@ -1,0 +1,13 @@
+Fortran/steady_state/bin/*.*
+Fortran/steady_state/obj/*.*
+Fortran/steady_state/results/*.*
+Fortran/steady_state/src/minpack.f90
+Fortran/steady_state/*.out
+Fortran/steady_state/*.mod
+Fortran/steady_state/*.sh
+Fortran_archive
+MATLAB/steady_state/results/*.*
+MATLAB/results/*.*
+MCD_Inclusion_Archive
+./**/*.out
+./**/*.mod
