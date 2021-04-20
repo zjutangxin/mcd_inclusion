@@ -11,12 +11,13 @@
 !         Date:                 Description of Changes
 !     ===========        =================================
 !      04/13/2021:          Original Code: No paralleling
+!      04/19/2021:            DP Paralleled
 !
 ! Compiling Environment:
 !   GNU gfortran on Ubuntu 16.04
 !
 ! Library Used:
-!   - N/A 
+!   - MINPACK 
 ! =============================================================================
 
 program inclusion
@@ -31,9 +32,16 @@ program inclusion
     real(dp) :: btime, etime
     real(dp), dimension(negrid) :: me, zz, pr
     real(dp), dimension(2) :: x_in, fvec
-    integer :: iflag, info
+    integer :: iflag, info, indz, indk, indm
     real(dp), dimension(lwa) :: wa
     external :: fcn_ss_cont
+
+    include 'mpif.h'
+    
+    ! initialize MPI environment
+    call mpi_init(ierr)
+    call mpi_comm_size(mpi_comm_world, nproc, ierr)
+    call mpi_comm_rank(mpi_comm_world, myrank, ierr)
 
     call cpu_time(btime)
     ! Construct grids
@@ -87,9 +95,31 @@ program inclusion
     tauz(:,1) = (1-tplus)*egrid ;
     tauz(:,2) = (1-tminus)*egrid ;
 
-    write (*,*) 'Pareto distribution: compare mean and variance'
-    write (*,*) 'Theoretical: ', emean, evar
-    write (*,*) 'Numerical', nummean, numvar
+    if (myrank .eq. root) then 
+        write (*,*) 'Pareto distribution: compare mean and variance'
+        write (*,*) 'Theoretical: ', emean, evar
+        write (*,*) 'Numerical', nummean, numvar
+    end if
+
+    ! Distribute workload
+    indm = 0
+    do indz = 1,2
+    do inde = 1,negrid
+        do indk = 1,nkgrid
+            indm = indm + 1
+            iifun(indk,(indz-1)*negrid+inde) = indm
+            izfun(indm) = indz
+            iefun(indm) = inde
+            ikfun(indm) = indk
+        end do
+    end do
+    end do
+
+    ni_indi = int(real(ni_total-1)/real(nproc))+1
+    allocate(mvali(ni_indi),mpolci(ni_indi),mpolai(ni_indi),mpolaindi(ni_indi))
+    allocate(mvala(ni_total),mpolca(ni_total),mpolaa(ni_total),mpolainda(ni_total))
+    ibegin = myrank*ni_indi + 1
+    iend = min((myrank+1)*ni_indi,ni_total)
 
     wguess = 0.0803852580114_dp
     rguess = -0.0501250_dp
@@ -98,17 +128,29 @@ program inclusion
 
     ! evaluate excess demand at price xin
     ! call fcn_ss(x_in,fvec)
-    call fcn_ss_cont(nmarket,x_in,fvec,iflag)
-    ! call hybrd1(fcn_ss_cont,nmarket,x_in,fvec,tolmin,info,wa,lwa)
+    ! call fcn_ss_cont(nmarket,x_in,fvec,iflag)
+    call hybrd1(fcn_ss_cont,nmarket,x_in,fvec,tolmin,info,wa,lwa)
 
-    !write (*,*) 'wage == ', wguess, 'interest == ', rguess
-    write (*,*) 'wage == ', x_in(1), 'interest == ', x_in(2)
-    write (*,*) 'excess demand'
-    write (*,*) 'labor == ', fvec(1), 'capital == ', fvec(2)
+    if (myrank .eq. root) then
+        !write (*,*) 'wage == ', wguess, 'interest == ', rguess
+        write (*,*) 'wage == ', x_in(1), 'interest == ', x_in(2)
+        write (*,*) 'excess demand'
+        write (*,*) 'labor == ', fvec(1), 'capital == ', fvec(2)
+    end if
 
-    call save_results
+    if (myrank .eq. root) then
+        call save_results
+    end if
+
     call cpu_time(etime)
 
-    write (*,*) 'time running == ', etime-btime, ' secs'
+    if (myrank .eq. root) then
+        write (*,*) 'time running == ', etime-btime, ' secs'
+    end if
+
+    deallocate(mvali,mpolci,mpolai,mpolaindi)
+    deallocate(mvala,mpolca,mpolaa,mpolainda)
+
+    call mpi_finalize(ierr)
 
 end program inclusion

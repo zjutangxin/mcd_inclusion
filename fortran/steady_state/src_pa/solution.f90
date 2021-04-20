@@ -68,7 +68,7 @@ subroutine fcn_ss(x_in,fvec)
 
     do indz = 1,2
     do inde = 1,negrid
-        do indk = nkgrid,1,-1
+        do indk = 1,nkgrid
             incomes = income(indk,(indz-1)*negrid+inde)
             if (incomes .le. kint) then
                 nj = max(1,int((incomes-kmin)*sr*(nintk-1.0_dp)/(kint-kmin)+1.0_dp)-1)
@@ -266,21 +266,29 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
     real(dp) :: cons, vtmp
     real(dp) :: eps, epsh, tolh
     integer :: loopn, indz, inde, indk, indkc, maxiterh, looph
-    integer :: jj, aind, nj, loopd, indj, induse
+    integer :: jj, aind, nj, loopd, indj, induse, indm
+
+    include 'mpif.h'
 
     w = x_in(1)
     r = x_in(2)
 
-    write (*,*) 'r == ', r, ' w ==', w
+    if (myrank .eq. root) then
+        write (*,*) 'r == ', r, ' w ==', w
+    end if
     if (r+delta .le. 0.0_dp) then
         r = -delta + 1e-6
-        write (*,*) 'warning!!!! negative kappa!!!!'
+        if (myrank .eq. root) then
+            write (*,*) 'warning!!!! negative kappa!!!!'
+        end if
     end if
 
     kappa = alpha*w/((1-alpha)*(r+delta))
     lstr = (w/(tauz*(1-nu)*(1-alpha)*kappa**(alpha*(1-nu))))**(-1/nu)
     kstr = kappa*lstr
 
+    ! parallel the following section of VFI
+    ! occupational choice is fast to solve, no parallelling
     do indz = 1,2
     do inde = 1,negrid
         do indk = 1,nkgrid
@@ -310,50 +318,63 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
     loopn = 1
 
     do loopn = 1,maxiterv
-    if (mod(loopn,5) .eq. 0) then
-        write (*,*) 'loopn == ', loopn, ' eps == ', eps
+    if (myrank .eq. root) then
+        if (mod(loopn,5) .eq. 0) then
+            write (*,*) 'loopn == ', loopn, ' eps == ', eps
+        end if
     end if
     polaind = nkgridc 
     polc = 0.0_dp
     pola = 0.0_dp
     vtemp = 0.0_dp
 
-    do indz = 1,2
-    do inde = 1,negrid
-        do indk = 1,nkgrid
-            incomes = income(indk,(indz-1)*negrid+inde)
-            if (incomes .le. kint) then
-                nj = max(1,int((incomes-kmin)*sr*(nintk-1.0_dp)/(kint-kmin)+1.0_dp)-1)
-            else
-                nj = min(nkgridc,int((nintk-1)*sr+1+(incomes-kint)/(kmax-kint)*sr*(nkgrid-nintk)))-1    
-            end if           
-            nj = min(nj,polaind(min(nkgrid,indk+1),(indz-1)*negrid+inde))
-
-            do indkc = nj,1,-1
-                jj = min(nkgrid-1,(indkc-1)/sr+1)
-                vtemp(indkc) = psi*&
+    ! here do iteration from ibegin to iend
+    do indm = ibegin, iend
+        indz = izfun(indm)
+        inde = iefun(indm)
+        indk = ikfun(indm)
+        incomes = income(indk,(indz-1)*negrid+inde)
+        if (incomes .le. kint) then
+            nj = max(1,int((incomes-kmin)*sr*(nintk-1.0_dp)/(kint-kmin)+1.0_dp)-1)
+        else
+            nj = min(nkgridc,int((nintk-1)*sr+1+(incomes-kint)/(kmax-kint)*sr*(nkgrid-nintk)))-1    
+        end if           
+        
+        do indkc = nj,1,-1
+            jj = min(nkgrid-1,(indkc-1)/sr+1)
+            vtemp(indkc) = psi*&
                     ((vn(jj+1,inde+negrid*(indz-1))-vn(jj,inde+negrid*(indz-1))) &
                     /(kgrid(jj+1)-kgrid(jj))*&
                     (kgridc(indkc)-kgrid(jj))+vn(jj,inde+negrid*(indz-1)))
-                vtemp(indkc) = vtemp(indkc) + (1-psi)*&
-                    sum(omega*((vn(jj+1,:)-vn(jj,:))/(kgrid(jj+1)-kgrid(jj))*(kgridc(indkc)-kgrid(jj)) &
-                    +vn(jj,:)))
-                cons = incomes - kgridc(indkc)
-                vtemp(indkc) = beta*vtemp(indkc) + (cons**(1-sigma)-1)/(1-sigma)
+            vtemp(indkc) = vtemp(indkc) + (1-psi)*&
+                sum(omega*((vn(jj+1,:)-vn(jj,:))/(kgrid(jj+1)-kgrid(jj))*(kgridc(indkc)-kgrid(jj)) &
+                +vn(jj,:)))
+            cons = incomes - kgridc(indkc)
+            vtemp(indkc) = beta*vtemp(indkc) + (cons**(1-sigma)-1)/(1-sigma)   
+            
+            if ((indkc .lt. nj) .and. (vtemp(indkc) .lt. vtemp(min(indkc+1,nj))) ) then
+                exit
+            end if
+            mvali(indm-ibegin+1) = vtemp(indkc)
+            mpolai(indm-ibegin+1) = kgridc(indkc)
+            mpolci(indm-ibegin+1) = incomes - kgridc(indkc)
+            mpolaindi(indm-ibegin+1) = indkc
+        end do ! indkc
+    end do ! indm
+    
+    call mpi_allgather(mvali(1),ni_indi,mpi_double_precision,&
+        mvala(1),ni_indi,mpi_double_precision,mpi_comm_world,ierr)
+    call mpi_allgather(mpolci(1),ni_indi,mpi_double_precision,&
+        mpolca(1),ni_indi,mpi_double_precision,mpi_comm_world,ierr)
+    call mpi_allgather(mpolai(1),ni_indi,mpi_double_precision,&
+        mpolaa(1),ni_indi,mpi_double_precision,mpi_comm_world,ierr)        
+    call mpi_allgather(mpolaindi(1),ni_indi,mpi_integer,&
+        mpolainda(1),ni_indi,mpi_integer,mpi_comm_world,ierr)
 
-                if ((indkc .lt. nj) .and. (vtemp(indkc) .lt. vtemp(min(indkc+1,nj))) ) then
-                    exit
-                end if
-                vnn(indk,inde+(indz-1)*negrid) = vtemp(indkc)
-                pola(indk,inde+(indz-1)*negrid) = kgridc(indkc)
-                polc(indk,inde+(indz-1)*negrid) = incomes - kgridc(indkc)
-                polaind(indk,inde+(indz-1)*negrid) = indkc   
-
-            end do ! indkc
-
-        end do ! indk
-    end do ! inde
-    end do ! indz
+    vnn = reshape(mvala,(/nkgrid,nee/))
+    polc = reshape(mpolca,(/nkgrid,nee/))
+    pola = reshape(mpolaa,(/nkgrid,nee/))
+    polaind = reshape(mpolainda,(/nkgrid,nee/))
 
     ! Howard acceleration
     maxiterh = maxiterv
@@ -362,24 +383,29 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
     vh = vnn
     tolh = tolv
 
+    ! again, here do ibegin to iend
     do looph = 1,maxiterv
-    do indz = 1,2
-    do inde = 1,negrid
-        do indk = 1,nkgrid
-            aind = polaind(indk,inde+(indz-1)*negrid)
-            jj = min(nkgrid-1,int((aind-1)/sr)+1)
-            vtmp = psi*&
-                ((vh(jj+1,inde+negrid*(indz-1))-vh(jj,inde+negrid*(indz-1)))&
-                /(kgrid(jj+1)-kgrid(jj))*&
-                (kgridc(aind)-kgrid(jj))+vh(jj,inde+negrid*(indz-1)))
-            vtmp = vtmp + (1-psi)*&
-                sum(omega*((vh(jj+1,:)-vh(jj,:))/(kgrid(jj+1)-kgrid(jj))*(kgridc(aind)-kgrid(jj))&
-                +vh(jj,:)))
-            vnn(indk,inde+negrid*(indz-1)) = (polc(indk,inde+negrid*(indz-1))**(1-sigma)-1)/(1-sigma)&
-                + beta*vtmp
-        end do ! indk
-    end do ! inde
-    end do ! indz
+
+    do indm = ibegin,iend
+        indz = izfun(indm)
+        inde = iefun(indm)
+        indk = ikfun(indm)
+        aind = polaind(indk,inde+(indz-1)*negrid)
+        jj = min(nkgrid-1,int((aind-1)/sr)+1)
+        vtmp = psi*&
+            ((vh(jj+1,inde+negrid*(indz-1))-vh(jj,inde+negrid*(indz-1)))&
+            /(kgrid(jj+1)-kgrid(jj))*&
+            (kgridc(aind)-kgrid(jj))+vh(jj,inde+negrid*(indz-1)))
+        vtmp = vtmp + (1-psi)*&
+            sum(omega*((vh(jj+1,:)-vh(jj,:))/(kgrid(jj+1)-kgrid(jj))*(kgridc(aind)-kgrid(jj))&
+            +vh(jj,:)))
+        mvali(indm-ibegin+1) = (polc(indk,inde+negrid*(indz-1))**(1-sigma)-1)/(1-sigma)&
+            + beta*vtmp
+    end do
+
+    call mpi_allgather(mvali(1),ni_indi,mpi_double_precision,&
+        mvala(1),ni_indi,mpi_double_precision,mpi_comm_world,ierr)
+    vnn = reshape(mvala,(/nkgrid,nee/))
 
     epsh = maxval(dabs(vnn - vh))
     vh = vnn 
@@ -438,10 +464,11 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
 
     ddistss = 1.0_dp/nsim
     do loopd = 1,maxiterd
-        if (mod(loopd,50) .eq. 0) then
-            write (*,*) 'loopd == ', loopd, ' eps == ', eps
-        end if
-
+        if (myrank .eq. root) then
+            if (mod(loopd,100) .eq. 0) then
+                write (*,*) 'loopd == ', loopd, ' eps == ', eps
+            end if
+        end if 
         distssn = 0.0_dp
         do indz = 1,2
         do inde = 1,negrid
@@ -558,4 +585,5 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
 
     fvec(1) = ldemand - lsupply
     fvec(2) = ademand - asupply
+
 end subroutine fcn_ss_cont

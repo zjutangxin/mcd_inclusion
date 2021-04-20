@@ -8,6 +8,8 @@ Fortran/steady_state/*.sh
 Fortran_archive
 MATLAB/steady_state/results/*.*
 MATLAB/results/*.*
+MATLAB/*.mat
 MCD_Inclusion_Archive
 ./**/*.out
 ./**/*.mod
+MATLAB/steady_state/ss_test_speed.mat

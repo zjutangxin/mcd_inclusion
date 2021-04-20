@@ -71,14 +71,14 @@ q      = 7.0 ;      % tax probability Pr = 1-exp(-qe)
 % Computational parameters
 kmax    = 12500 ;
 kmin    = 1e-9 ;
-nkgrid  = 601 ;
+nkgrid  = 501 ;
 sr      = 10 ;
 nkgridc = sr*(nkgrid-1)+1 ;
 srsim = 15 ;
 nsim = srsim*(nkgrid-1)+1 ;
 kint    = 25.0 ;
 nintk   = 201 ;
-negrid  = 24 ;
+negrid  = 12 ;
 nee = negrid*2 ;
 
 % Computational variables
@@ -164,14 +164,14 @@ tauz(:,2) = (1-tminus)*egrid ;
 %                   Solve Equilibrium Prices
 % =========================================================================
 % initial guess
-% wguess = 0.0803852580114;
-wguess = 0.0853852580114;
+wguess = 0.0803852580114;
+% wguess = 0.0853852580114;
 rguess = -0.050125 ;
-% varin = [wguess rguess] ;
+varin = [wguess rguess] ;
 
 % evaluate excess demand
 % fval = fcn_ss(varin) ;
-% fval = fcn_ss_cont(varin) ;
+fval = fcn_ss_cont(varin) ;
 
 % % bisection
 % wbot = 0.0853852580114 ;
@@ -197,16 +197,16 @@ rguess = -0.050125 ;
 %     optimoptions('fsolve','Display','iter',...
 %     'OptimalityTolerance',tolfsolve,'MaxIterations',4000,...
 %     'FiniteDifferenceStepSize',1e-3));
-[eprice fval] = fsolve(@fcn_ss_cont,[wguess rguess],...
-    optimoptions('fsolve','Display','iter',...
-    'OptimalityTolerance',tolfsolve,'MaxIterations',4000,...
-    'FiniteDifferenceStepSize',1e-3));
-wss = eprice(1) ;
-rss = eprice(2) ;
+% [eprice fval] = fsolve(@fcn_ss_cont,[wguess rguess],...
+%     optimoptions('fsolve','Display','iter',...
+%     'OptimalityTolerance',tolfsolve,'MaxIterations',4000,...
+%     'FiniteDifferenceStepSize',1e-3));
+% wss = eprice(1) ;
+% rss = eprice(2) ;
 
 time = toc ;
-save ss_test_cont_nt24.mat ;
-
+% save ss_test_cont_nt24.mat ;
+save ss_test_speed.mat;
 % save vfi_test_huge.mat ;
 
 disp('total running')

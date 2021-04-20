@@ -110,7 +110,7 @@ while (eps > tolv) && (loopn < maxiterv)
     % ================== Occupational Choice =====================
     for indz = 1:1:2
     for inde = 1:1:negrid
-        for indk = 1:1:nkgrid
+        for indk = nkgrid:-1:1
 %             kcstr = min(kstr(inde,indz),lambda*kgrid(indk)) ;
 %             lcstr = (w/(tauz(inde,indz)*(1-nu)*(1-alpha)*...
 %                 (kcstr)^(alpha*(1-nu))))^(1/(alpha*(nu-1)-nu)) ;
