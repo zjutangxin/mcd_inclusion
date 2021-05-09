@@ -88,7 +88,7 @@ program inclusion
     nummean = sum(edist*egrid)
     numvar = sum(((egrid-nummean)**2)*edist)
 
-    egrid = egrid*0.2_dp
+    egrid = egrid*zscaler
 
     omega(1:negrid) = edist*(1-exp(-q*egrid)) ;
     omega(negrid+1:nee) = edist*(exp(-q*egrid)) ;
@@ -96,6 +96,9 @@ program inclusion
     tauz(:,2) = (1-tminus)*egrid ;
 
     if (myrank .eq. root) then 
+        write (*,*) '========================================================'
+        write (*,*) 'Intermediate results'
+        write (*,*) '========================================================'
         write (*,*) 'Pareto distribution: compare mean and variance'
         write (*,*) 'Theoretical: ', emean, evar
         write (*,*) 'Numerical', nummean, numvar
@@ -121,30 +124,46 @@ program inclusion
     ibegin = myrank*ni_indi + 1
     iend = min((myrank+1)*ni_indi,ni_total)
 
-    wguess = 0.0803852580114_dp
-    rguess = -0.0501250_dp
+    ! wguess = 0.0803852580114_dp
+    ! rguess = -0.0501250_dp
+    wguess = 8.5284241397084265E-002
+    rguess = -4.8792179372680620E-002
     x_in(1) = wguess
     x_in(2) = rguess
 
     ! evaluate excess demand at price xin
     ! call fcn_ss(x_in,fvec)
-    ! call fcn_ss_cont(nmarket,x_in,fvec,iflag)
-    call hybrd1(fcn_ss_cont,nmarket,x_in,fvec,tolmin,info,wa,lwa)
+    call fcn_ss_cont(nmarket,x_in,fvec,iflag)
+    ! call hybrd1(fcn_ss_cont,nmarket,x_in,fvec,tolmin,info,wa,lwa)
+
+    wss = x_in(1)
+    rss = x_in(2)
 
     if (myrank .eq. root) then
         !write (*,*) 'wage == ', wguess, 'interest == ', rguess
-        write (*,*) 'wage == ', x_in(1), 'interest == ', x_in(2)
-        write (*,*) 'excess demand'
-        write (*,*) 'labor == ', fvec(1), 'capital == ', fvec(2)
+        write (*,*) ''
+        write (*,*) ''
+        write (*,*) '========================================================'
+        write (*,*) 'Final Results'
+        write (*,*) '========================================================'
+        write (*,*) ''
+        write (*,*) 'Market clearing condition'
+        write (*,111) 'wage == ', x_in(1), '     interest == ', x_in(2)
+        write (*,112) 'labor == ', fvec(1), '    capital == ', fvec(2)
+        write (*,*) ''
+111 format (a12, f16.10, a20, f16.10)        
+112 format (a12, f10.4, a20, f10.4)        
     end if
 
     if (myrank .eq. root) then
+        call compute_moments
         call save_results
     end if
 
     call cpu_time(etime)
 
     if (myrank .eq. root) then
+        write (*,*) ''
         write (*,*) 'time running == ', etime-btime, ' secs'
     end if
 

@@ -15,7 +15,14 @@ module global
     integer, dimension(nsim,nee) :: dpolo
     integer, dimension(nkgrid,nee) :: polaind, polo
     real(dp), dimension(nsim,nee) :: ddistss
-    real(dp) :: ademand, asupply, ldemand, lsupply
+    real(dp) :: ademand, asupply, ldemand, lsupply, wss, rss
+    real(dp), dimension(nee) :: wgt, maxprof
+
+    ! aggregate statistics
+    real(dp) :: govtax, govsub, govex, rcex
+    real(dp) :: aggy, aggc, aggk, aggef, aggl, nfirm, emeanf
+    real(dp) :: lmean, yperfirm, lprod, pimean, incmean
+    real(dp) :: share_ld, share_id, fexit
 
     ! MPI variables
     integer :: ierr, myrank, nproc, ni_indi, ibegin, iend

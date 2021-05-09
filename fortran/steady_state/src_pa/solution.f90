@@ -256,7 +256,6 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
     real(dp), dimension(2), intent(in) :: x_in
     real(dp), dimension(2), intent(out) :: fvec
     real(dp), dimension(nkgrid,nee) :: vnn, income, vh
-    real(dp), dimension(nee) :: wgt, maxprof
     real(dp), dimension(nsim,nee) :: distssn
     real(dp), dimension(nsim) :: disttemp
     real(dp), dimension(nkgridc) :: vtemp
@@ -274,7 +273,8 @@ subroutine fcn_ss_cont(np,x_in,fvec,iflag)
     r = x_in(2)
 
     if (myrank .eq. root) then
-        write (*,*) 'r == ', r, ' w ==', w
+        write (*,119) 'r == ', r, ' w ==', w
+119 format (a12,f10.4,a12,f10.4)        
     end if
     if (r+delta .le. 0.0_dp) then
         r = -delta + 1e-6

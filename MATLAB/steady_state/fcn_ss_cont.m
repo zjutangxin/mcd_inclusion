@@ -30,7 +30,7 @@ global tplus tminus q lambda
 
 % -------------- Allocations ----------------------
 global polc pola polk poll poly vn ddistss polaind polpi polo
-global dpolc dpola dpolk dpoll dpoly dpolo
+global dpolc dpola dpolk dpoll dpoly dpolo dpolpi wgt maxprof
 global egrid edist kgrid kgridc kgrids omega
 
 % -------------- Auxilliary variables ----------------------
@@ -45,7 +45,7 @@ global srsim nsim ademand asupply ldemand lsupply
 % input variables
 w = varin(1) ;
 r = varin(2) ;
-disp(['r == ', num2str(r), ' w == ', num2str(w)]);
+disp(['w == ', num2str(w), ' r == ', num2str(r)]);
 if r+delta <= 0
     r = r+1e-9;
     disp('warning!!!! negative kappa!!!!');
@@ -209,6 +209,7 @@ dpolk = zeros(nsim,nee) ;
 dpoll = zeros(nsim,nee) ;
 dpoly = zeros(nsim,nee) ;
 dpolo = zeros(nsim,nee) ;
+dpolpi = zeros(nsim,nee) ;
 for indz = 1:1:2
 for inde = 1:1:negrid
     for indk = 1:1:nsim
@@ -231,6 +232,9 @@ for inde = 1:1:negrid
         dpolo(indk,inde+(indz-1)*negrid) = ((polo(jj+1,inde+negrid*(indz-1))-polo(jj,inde+negrid*(indz-1)))...
                     /(kgrid(jj+1)-kgrid(jj))*...
                     (kgrids(indk)-kgrid(jj))+polo(jj,inde+negrid*(indz-1)));                        
+        dpolpi(indk,inde+(indz-1)*negrid) = ((polpi(jj+1,inde+negrid*(indz-1))-polpi(jj,inde+negrid*(indz-1)))...
+                    /(kgrid(jj+1)-kgrid(jj))*...
+                    (kgrids(indk)-kgrid(jj))+polpi(jj,inde+negrid*(indz-1)));                
     end
 end
 end
@@ -293,7 +297,7 @@ for indz = 1:1:2
         end
     end
 end
-
+nnf = 0;
 for indz = 1:1:2
 for inde = 1:negrid
     if (wgt(inde+(indz-1)*negrid)>0) && (wgt(inde+(indz-1)*negrid) < 1)
@@ -307,6 +311,8 @@ for inde = 1:negrid
                         ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid);
                 lsupply = lsupply + ...
                     ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid)*wgt(inde+(indz-1)*negrid);
+                nnf = nnf + ...
+                    ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid)*(1-wgt(inde+(indz-1)*negrid));
             else
                 asupply = asupply + dpola(indk,inde+(indz-1)*negrid)*...
                         ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid);
@@ -322,6 +328,8 @@ for inde = 1:negrid
                 asupply = asupply + dpola(indk,inde+(indz-1)*negrid)*...
                     ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid);            
                 ldemand = ldemand + dpoll(indk,inde+(indz-1)*negrid)*...
+                    ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid);
+                nnf = nnf + ...
                     ddistss(indk,inde+(indz-1)*negrid)*omega(inde+(indz-1)*negrid);
             else
                 asupply = asupply + dpola(indk,inde+(indz-1)*negrid)*...

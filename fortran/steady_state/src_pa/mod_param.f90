@@ -11,12 +11,12 @@ module parameters
     real(dp), parameter :: nu = 0.21_dp
     real(dp), parameter :: eta = 4.15_dp
     real(dp), parameter :: psi = 0.8940_dp
-    real(dp), parameter :: phi = 0.3670_dp
 
     real(dp), parameter :: lambda = 1.35_dp
     real(dp), parameter :: tplus = 0.50_dp
     real(dp), parameter :: tminus = -0.2975_dp
     real(dp), parameter :: q = 7.0_dp
+    real(dp), parameter :: zscaler = 0.2_dp
 
     real(dp), parameter :: kmax = 12500_dp
     real(dp), parameter :: kmin = 1e-9

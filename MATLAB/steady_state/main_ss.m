@@ -34,8 +34,8 @@ global tplus tminus q lambda
 
 % -------------- Allocations ----------------------
 global polc pola polk poll poly vn ddistss polaind polpi polo
-global dpolc dpola dpolk dpoll dpoly dpolo
-global egrid edist kgrid kgridc kgrids omega
+global dpolc dpola dpolk dpoll dpoly dpolo dpolpi
+global egrid edist kgrid kgridc kgrids omega wgt maxprof
 
 % -------------- Auxilliary variables ----------------------
 global tolv told maxiterv maxiterd
@@ -46,7 +46,7 @@ global srsim nsim ldemand lsupply ademand asupply
 %                      Data dictionary
 % =========================================================================
 % Utility variables
-tolv = 1e-4 ;
+tolv = 1e-6 ;
 told = 1e-7 ;
 tolfsolve = 1e-2 ;
 maxiterv = 1000 ;
@@ -164,14 +164,15 @@ tauz(:,2) = (1-tminus)*egrid ;
 %                   Solve Equilibrium Prices
 % =========================================================================
 % initial guess
-wguess = 0.0803852580114;
-% wguess = 0.0853852580114;
-rguess = -0.050125 ;
+% wguess = 0.0803852580114;
+% rguess = -0.050125 ;
+wguess = 8.5284241397084265E-002 ;
+rguess = -4.8792179372680620E-002 ;
 varin = [wguess rguess] ;
 
 % evaluate excess demand
 % fval = fcn_ss(varin) ;
-fval = fcn_ss_cont(varin) ;
+% fval = fcn_ss_cont(varin) ;
 
 % % bisection
 % wbot = 0.0853852580114 ;
@@ -197,17 +198,16 @@ fval = fcn_ss_cont(varin) ;
 %     optimoptions('fsolve','Display','iter',...
 %     'OptimalityTolerance',tolfsolve,'MaxIterations',4000,...
 %     'FiniteDifferenceStepSize',1e-3));
-% [eprice fval] = fsolve(@fcn_ss_cont,[wguess rguess],...
-%     optimoptions('fsolve','Display','iter',...
-%     'OptimalityTolerance',tolfsolve,'MaxIterations',4000,...
-%     'FiniteDifferenceStepSize',1e-3));
-% wss = eprice(1) ;
-% rss = eprice(2) ;
+[eprice fval] = fsolve(@fcn_ss_cont,[wguess rguess],...
+    optimoptions('fsolve','Display','iter',...
+    'OptimalityTolerance',tolfsolve,'MaxIterations',4000,...
+    'FiniteDifferenceStepSize',1e-3));
+wss = eprice(1) ;
+rss = eprice(2) ;
 
 time = toc ;
-% save ss_test_cont_nt24.mat ;
-save ss_test_speed.mat;
-% save vfi_test_huge.mat ;
+save ss_hybrd1.mat;
+% save ss_eval.mat ;
 
 disp('total running')
 disp(time) ;

@@ -9,3 +9,7 @@ Source code in both MATLAB and Fortran is provided for computing the equilibrium
 Version
 ----
 April 19th, 2021: compute steady state, MATLAB/Fortran (serial).
+
+April 20th, 2021: parallel included.
+
+May 8th, 2021: calibration moments computed
